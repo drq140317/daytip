@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="每日治愈小提示，每天一句温柔鼓励，换条文案放松心情">
+    <meta name="keywords" content="每日提示,治愈文案,生活小提醒">
     <title>每日题小提示</title>
     <style>
         * { box-sizing: border-box; }
@@ -27,6 +29,18 @@
             text-align: center;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.18);
+            /* 入场淡入动画 */
+            opacity: 0;
+            animation: cardShow 0.6s ease forwards, cardBreath 8s ease-in-out infinite alternate;
+        }
+        /* 卡片入场动画 */
+        @keyframes cardShow {
+            to { opacity: 1; }
+        }
+        /* 缓慢呼吸缩放动效 */
+        @keyframes cardBreath {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.015); }
         }
         h1 { margin-top: 0; font-size: 2em; }
         .date { font-size: 0.9em; opacity: 0.8; margin-bottom: 20px; }
@@ -39,6 +53,10 @@
             align-items: center;
             justify-content: center;
             transition: opacity 0.2s ease;
+            /* 文字渐变提亮 */
+            background: linear-gradient(90deg,#fff,#e0e0ff);
+            -webkit-background-clip: text;
+            color: transparent;
         }
         button {
             background: #fff;
@@ -48,9 +66,16 @@
             border-radius: 8px;
             font-size: 1em;
             cursor: pointer;
-            transition: transform 0.2s, opacity 0.2s;
+            transition: transform 0.2s, opacity 0.2s, background 0.2s;
         }
-        button:hover { transform: translateY(-2px); opacity: 0.9; }
+        button:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+            background: #e8e4f7;
+        }
+        button:active {
+            transform: translateY(0px);
+        }
         .day-count {
             font-size: 0.85em;
             opacity: 0.7;
@@ -127,10 +152,12 @@
         const dateEl = document.getElementById('currentDate');
         const tipTextEl = document.getElementById('tipText');
         const dayCountEl = document.getElementById('dayCount');
+        const nextTipBtn = document.getElementById('nextTipBtn');
         const today = new Date();
         const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
         dateEl.textContent = today.toLocaleDateString('zh-CN', options);
 
+        // 计算一年第几天
         function getDayOfYear(date) {
             const start = new Date(date.getFullYear(), 0, 0);
             const diff = date - start;
@@ -139,25 +166,38 @@
         }
 
         const dayOfYear = getDayOfYear(today);
-        let currentIndex = dayOfYear % tips.length;
-        tipTextEl.textContent = tips[currentIndex];
+        const cacheKey = `daytip_${dayOfYear}`;
+        // 本地缓存当日提示，同一天打开首页文案不变
+        let currentIndex = localStorage.getItem(cacheKey) ?? dayOfYear % tips.length;
+        // 兜底防止文案数组为空报错
+        if(tips.length === 0) {
+            tipTextEl.textContent = "暂无提示文案";
+        } else {
+            tipTextEl.textContent = tips[currentIndex];
+        }
         dayCountEl.textContent = `第 ${dayOfYear} 天 / 共 ${tips.length} 条提示`;
 
-        const nextTipBtn = document.getElementById('nextTipBtn');
+        // 切换节流锁，防止连续点击
+        let isSwitching = false;
         nextTipBtn.addEventListener('click', () => {
+            if(isSwitching || tips.length <= 1) return;
+            isSwitching = true;
+
             let newIndex;
             do {
                 newIndex = Math.floor(Math.random() * tips.length);
-            } while (newIndex === currentIndex && tips.length > 1);
+            } while (newIndex === currentIndex);
             
             currentIndex = newIndex;
             tipTextEl.style.opacity = 0;
             setTimeout(() => {
                 tipTextEl.textContent = tips[currentIndex];
                 tipTextEl.style.opacity = 1;
+                localStorage.setItem(cacheKey, currentIndex);
+                isSwitching = false;
             }, 200);
         });
     </script>
 </body>
-</html>
 <!-- 测试Git自动部署，2026-06-25 测试注释 -->
+</html>
