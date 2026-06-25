@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每日题小提示</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 20px;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        h1 { margin-top: 0; font-size: 2em; }
+        .date { font-size: 0.9em; opacity: 0.8; margin-bottom: 20px; }
+        .tip-content {
+            font-size: 1.15em;
+            line-height: 1.7;
+            margin-bottom: 30px;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.2s ease;
+        }
+        button {
+            background: #fff;
+            color: #764ba2;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        button:hover { transform: translateY(-2px); opacity: 0.9; }
+        .day-count {
+            font-size: 0.85em;
+            opacity: 0.7;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>💡 每日题小提示</h1>
+        <div class="date" id="currentDate"></div>
+        <div class="tip-content" id="tipText">正在加载...</div>
+        <button id="nextTipBtn">换一条提示</button>
+        <div class="day-count" id="dayCount"></div>
+    </div>
+    <script>
+        const tips = [
+            "今天记得多喝水哦，身体需要水分才能保持活力！",
+            "遇到困难时，试着把大问题拆解成几个小步骤，逐个击破。",
+            "不要害怕犯错，错误是成长最好的老师。",
+            "今天有没有和家人朋友说说话？联系一下好久不见的朋友吧。",
+            "遇到烦心事先别慌，深呼吸三次，再想想怎么办。",
+            "适当休息，出去走走看看远方，眼睛和心情都需要放松。",
+            "尝试用不同的角度看同一个问题，也许会有新的发现。",
+            "如果卡住了超过30分钟，不妨先放一放，答案可能会自己冒出来。",
+            "今天的天气怎么样？好天气就别宅在家里啦。",
+            "做事情前先想清楚目标，动手只是最后一步。",
+            "每天坚持做一件小事，一年后你会看到惊人的变化。",
+            "学会说「不」，你的时间和精力很宝贵。",
+            "不要和别人比，和昨天的自己比就好。",
+            "心情不好的时候，听首喜欢的歌或者看个搞笑视频。",
+            "今天的饭好好吃了吗？再忙也要按时吃饭。",
+            "早睡早起，熬夜真的会变丑变笨哦。",
+            "对身边的人说声谢谢，感恩会让你更快乐。",
+            "今天有没有运动一下？哪怕只是散步十分钟也好。",
+            "遇到不懂的事情，大胆问，没人会笑话好学的人。",
+            "保持好奇心，世界上还有很多有趣的东西等着你发现。",
+            "今天比昨天进步了一点点，就是胜利。",
+            "不要追求完美，先完成再完美。",
+            "读几页书吧，书本是最便宜的投资。",
+            "整理一下房间，整洁的环境会让心情变好。",
+            "今天有没有微笑？笑一笑，没什么大不了的。",
+            "别熬夜了，放下手机，早点睡觉。",
+            "给自己定个小目标，完成了就奖励自己一下。",
+            "和家人一起吃顿饭，陪伴是最好的礼物。",
+            "遇到挫折别灰心，人生就是起起落落落落落落...起的。",
+            "今天的事情今天做，拖延症要不得。",
+            "多看看别人的优点，少盯着别人的缺点。",
+            "保持乐观，办法总比困难多。",
+            "今天有没有学到新东西？哪怕只是一个小知识。",
+            "别太在意别人的看法，你是为自己而活。",
+            "出门记得带伞，天气预报有时候也不准。",
+            "累了就休息，没有人规定你必须一直坚强。",
+            "今天的你，比昨天更优秀了吗？",
+            "珍惜当下，明天和意外不知道哪个先来。",
+            "多站在别人的角度想想，你会更理解别人。",
+            "坚持你热爱的事情，时间会给你答案。",
+            "别为打翻的牛奶哭泣，接受已经发生的事。",
+            "今天有没有夸奖过别人？真诚的赞美会让双方都开心。",
+            "保持谦逊，你知道的永远只是冰山一角。",
+            "给自己一点独处的时间，和自己对话。",
+            "别着急，慢慢来，比较快。",
+            "今天的任务完成了吗？完成了就好好放松一下。",
+            "记住别人的名字，这是最基本的尊重。",
+            "不要抱怨，抱怨解决不了任何问题。",
+            "今天有没有做让自己开心的事？",
+            "相信自己，你比想象中更强大。",
+            "代码不仅要能跑，还要让别人看得懂，注意写好注释哦。",
+            "遇到报错先别慌，仔细阅读错误信息的第一行和最后一行。",
+            "每天坚持写一点代码，手感比什么都重要。",
+            "学编程最好的方法是做项目，边做边学。"
+        ];
+
+        const dateEl = document.getElementById('currentDate');
+        const tipTextEl = document.getElementById('tipText');
+        const dayCountEl = document.getElementById('dayCount');
+        const today = new Date();
+        const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+        dateEl.textContent = today.toLocaleDateString('zh-CN', options);
+
+        function getDayOfYear(date) {
+            const start = new Date(date.getFullYear(), 0, 0);
+            const diff = date - start;
+            const oneDay = 1000 * 60 * 60 * 24;
+            return Math.floor(diff / oneDay);
+        }
+
+        const dayOfYear = getDayOfYear(today);
+        let currentIndex = dayOfYear % tips.length;
+        tipTextEl.textContent = tips[currentIndex];
+        dayCountEl.textContent = `第 ${dayOfYear} 天 / 共 ${tips.length} 条提示`;
+
+        const nextTipBtn = document.getElementById('nextTipBtn');
+        nextTipBtn.addEventListener('click', () => {
+            let newIndex;
+            do {
+                newIndex = Math.floor(Math.random() * tips.length);
+            } while (newIndex === currentIndex && tips.length > 1);
+            
+            currentIndex = newIndex;
+            tipTextEl.style.opacity = 0;
+            setTimeout(() => {
+                tipTextEl.textContent = tips[currentIndex];
+                tipTextEl.style.opacity = 1;
+            }, 200);
+        });
+    </script>
+</body>
+</html>
