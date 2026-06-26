@@ -7,197 +7,454 @@
     <meta name="keywords" content="每日提示,治愈文案,生活小提醒">
     <title>每日小提示</title>
     <style>
+        /* ===== 全局重置 & 字体 ===== */
         * { box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
+            padding: 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: #fff;
-            padding: 20px;
+            transition: background 0.3s ease;
         }
+
+        /* ===== 深色模式适配 ===== */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            }
+            .card {
+                background: rgba(0, 0, 0, 0.45);
+                border-color: rgba(255, 255, 255, 0.1);
+            }
+            .tip-content {
+                background: linear-gradient(90deg, #e0e0ff, #c8c8ff);
+                -webkit-background-clip: text;
+                color: transparent;
+            }
+            button {
+                background: #2a2a4a;
+                color: #d0d0ff;
+            }
+            button:hover {
+                background: #3a3a6a;
+            }
+        }
+
+        /* ===== 卡片样式 ===== */
         .card {
             background: rgba(255, 255, 255, 0.15);
             backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border-radius: 16px;
-            padding: 40px;
+            padding: 40px 30px;
             max-width: 500px;
             width: 100%;
             text-align: center;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.18);
-            /* 入场淡入动画 */
             opacity: 0;
-            animation: cardShow 0.6s ease forwards, cardBreath 8s ease-in-out infinite alternate;
+            animation: cardShow 0.6s ease forwards;
+            /* 呼吸动效改为上下浮动，更柔和 */
+            animation: cardShow 0.6s ease forwards, floatBreath 6s ease-in-out infinite alternate;
         }
-        /* 卡片入场动画 */
+
         @keyframes cardShow {
             to { opacity: 1; }
         }
-        /* 缓慢呼吸缩放动效 */
-        @keyframes cardBreath {
-            0% { transform: scale(1); }
-            100% { transform: scale(1.015); }
+
+        @keyframes floatBreath {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(-6px); }
         }
-        h1 { margin-top: 0; font-size: 2em; }
-        .date { font-size: 0.9em; opacity: 0.8; margin-bottom: 20px; }
+
+        h1 {
+            margin-top: 0;
+            font-size: 2em;
+            letter-spacing: 1px;
+        }
+
+        .date {
+            font-size: 0.9em;
+            opacity: 0.85;
+            margin-bottom: 12px;
+        }
+
+        /* ===== 提示文字 ===== */
         .tip-content {
             font-size: 1.15em;
             line-height: 1.7;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             min-height: 80px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: opacity 0.2s ease;
-            /* 文字渐变提亮 */
-            background: linear-gradient(90deg,#fff,#e0e0ff);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            background: linear-gradient(90deg, #fff, #e0e0ff);
             -webkit-background-clip: text;
             color: transparent;
+            /* 后备颜色 */
+            @supports not (background-clip: text) {
+                color: #fff;
+                background: none;
+            }
         }
+
+        .tip-content.slide-out {
+            opacity: 0;
+            transform: translateY(-12px);
+        }
+        .tip-content.slide-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ===== 进度条 ===== */
+        .progress-wrapper {
+            margin: 18px 0 22px;
+        }
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+            opacity: 0.8;
+            margin-bottom: 4px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: #fff;
+            border-radius: 10px;
+            transition: width 0.6s ease;
+        }
+
+        /* ===== 按钮 ===== */
         button {
             background: #fff;
             color: #764ba2;
             border: none;
-            padding: 12px 24px;
+            padding: 12px 28px;
             border-radius: 8px;
             font-size: 1em;
+            font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s, opacity 0.2s, background 0.2s;
+            transition: transform 0.15s, opacity 0.15s, background 0.15s, box-shadow 0.15s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: relative;
         }
         button:hover {
             transform: translateY(-2px);
             opacity: 0.9;
-            background: #e8e4f7;
+            background: #f0ecfa;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
         button:active {
             transform: translateY(0px);
         }
-        .day-count {
-            font-size: 0.85em;
+        button:disabled {
+            opacity: 0.5;
+            transform: none !important;
+            pointer-events: none;
+        }
+        button .spinner {
+            display: none;
+            margin-left: 8px;
+            width: 14px;
+            height: 14px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+        }
+        button.loading .spinner {
+            display: inline-block;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== 底部信息 ===== */
+        .footer-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 18px;
+            font-size: 0.8em;
             opacity: 0.7;
-            margin-top: 15px;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        /* ===== 复制按钮 ===== */
+        .copy-btn {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.6);
+            font-size: 0.9em;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+            box-shadow: none;
+        }
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.15);
+            transform: none;
+        }
+        .copy-btn.copied {
+            color: #b6ffb6;
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 480px) {
+            .card { padding: 24px 18px; }
+            h1 { font-size: 1.5em; }
+            .tip-content { font-size: 1em; min-height: 70px; }
         }
     </style>
 </head>
 <body>
-    <div class="card">
+    <div class="card" role="main">
         <h1>💡 每日小提示</h1>
         <div class="date" id="currentDate"></div>
+
         <div class="tip-content" id="tipText">正在加载...</div>
-        <button id="nextTipBtn">换一条提示</button>
-        <div class="day-count" id="dayCount"></div>
+
+        <!-- 进度条 -->
+        <div class="progress-wrapper">
+            <div class="progress-label">
+                <span>今年已过</span>
+                <span id="progressPercent">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <button id="nextTipBtn" aria-label="换一条提示">
+            <span>换一条提示</span>
+            <span class="spinner"></span>
+        </button>
+
+        <div class="footer-info">
+            <span id="indexDisplay">第 1 / 54 条</span>
+            <button class="copy-btn" id="copyBtn" aria-label="复制当前提示">📋 复制</button>
+        </div>
     </div>
+
     <script>
-        const tips = [
-            "今天记得多喝水哦，身体需要水分才能保持活力！",
-            "遇到困难时，试着把大问题拆解成几个小步骤，逐个击破。",
-            "不要害怕犯错，错误是成长最好的老师。",
-            "今天有没有和家人朋友说说话？联系一下好久不见的朋友吧。",
-            "遇到烦心事先别慌，深呼吸三次，再想想怎么办。",
-            "适当休息，出去走走看看远方，眼睛和心情都需要放松。",
-            "尝试用不同的角度看同一个问题，也许会有新的发现。",
-            "如果卡住了超过30分钟，不妨先放一放，答案可能会自己冒出来。",
-            "今天的天气怎么样？好天气就别宅在家里啦。",
-            "做事情前先想清楚目标，动手只是最后一步。",
-            "每天坚持做一件小事，一年后你会看到惊人的变化。",
-            "学会说「不」，你的时间和精力很宝贵。",
-            "不要和别人比，和昨天的自己比就好。",
-            "心情不好的时候，听首喜欢的歌或者看个搞笑视频。",
-            "今天的饭好好吃了吗？再忙也要按时吃饭。",
-            "早睡早起，熬夜真的会变丑变笨哦。",
-            "对身边的人说声谢谢，感恩会让你更快乐。",
-            "今天有没有运动一下？哪怕只是散步十分钟也好。",
-            "遇到不懂的事情，大胆问，没人会笑话好学的人。",
-            "保持好奇心，世界上还有很多有趣的东西等着你发现。",
-            "今天比昨天进步了一点点，就是胜利。",
-            "不要追求完美，先完成再完美。",
-            "读几页书吧，书本是最便宜的投资。",
-            "整理一下房间，整洁的环境会让心情变好。",
-            "今天有没有微笑？笑一笑，没什么大不了的。",
-            "别熬夜了，放下手机，早点睡觉。",
-            "给自己定个小目标，完成了就奖励自己一下。",
-            "和家人一起吃顿饭，陪伴是最好的礼物。",
-            "遇到挫折别灰心，人生就是起起落落落落落落...起的。",
-            "今天的事情今天做，拖延症要不得。",
-            "多看看别人的优点，少盯着别人的缺点。",
-            "保持乐观，办法总比困难多。",
-            "今天有没有学到新东西？哪怕只是一个小知识。",
-            "别太在意别人的看法，你是为自己而活。",
-            "出门记得带伞，天气预报有时候也不准。",
-            "累了就休息，没有人规定你必须一直坚强。",
-            "今天的你，比昨天更优秀了吗？",
-            "珍惜当下，明天和意外不知道哪个先来。",
-            "多站在别人的角度想想，你会更理解别人。",
-            "坚持你热爱的事情，时间会给你答案。",
-            "别为打翻的牛奶哭泣，接受已经发生的事。",
-            "今天有没有夸奖过别人？真诚的赞美会让双方都开心。",
-            "保持谦逊，你知道的永远只是冰山一角。",
-            "给自己一点独处的时间，和自己对话。",
-            "别着急，慢慢来，比较快。",
-            "今天的任务完成了吗？完成了就好好放松一下。",
-            "记住别人的名字，这是最基本的尊重。",
-            "不要抱怨，抱怨解决不了任何问题。",
-            "今天有没有做让自己开心的事？",
-            "相信自己，你比想象中更强大。",
-            "代码不仅要能跑，还要让别人看得懂，注意写好注释哦。",
-            "遇到报错先别慌，仔细阅读错误信息的第一行和最后一行。",
-            "每天坚持写一点代码，手感比什么都重要。",
-            "学编程最好的方法是做项目，边做边学。"
-        ];
+        (function() {
+            // ===== 提示库 =====
+            const tips = [
+                "今天记得多喝水哦，身体需要水分才能保持活力！",
+                "遇到困难时，试着把大问题拆解成几个小步骤，逐个击破。",
+                "不要害怕犯错，错误是成长最好的老师。",
+                "今天有没有和家人朋友说说话？联系一下好久不见的朋友吧。",
+                "遇到烦心事先别慌，深呼吸三次，再想想怎么办。",
+                "适当休息，出去走走看看远方，眼睛和心情都需要放松。",
+                "尝试用不同的角度看同一个问题，也许会有新的发现。",
+                "如果卡住了超过30分钟，不妨先放一放，答案可能会自己冒出来。",
+                "今天的天气怎么样？好天气就别宅在家里啦。",
+                "做事情前先想清楚目标，动手只是最后一步。",
+                "每天坚持做一件小事，一年后你会看到惊人的变化。",
+                "学会说「不」，你的时间和精力很宝贵。",
+                "不要和别人比，和昨天的自己比就好。",
+                "心情不好的时候，听首喜欢的歌或者看个搞笑视频。",
+                "今天的饭好好吃了吗？再忙也要按时吃饭。",
+                "早睡早起，熬夜真的会变丑变笨哦。",
+                "对身边的人说声谢谢，感恩会让你更快乐。",
+                "今天有没有运动一下？哪怕只是散步十分钟也好。",
+                "遇到不懂的事情，大胆问，没人会笑话好学的人。",
+                "保持好奇心，世界上还有很多有趣的东西等着你发现。",
+                "今天比昨天进步了一点点，就是胜利。",
+                "不要追求完美，先完成再完美。",
+                "读几页书吧，书本是最便宜的投资。",
+                "整理一下房间，整洁的环境会让心情变好。",
+                "今天有没有微笑？笑一笑，没什么大不了的。",
+                "别熬夜了，放下手机，早点睡觉。",
+                "给自己定个小目标，完成了就奖励自己一下。",
+                "和家人一起吃顿饭，陪伴是最好的礼物。",
+                "遇到挫折别灰心，人生就是起起落落落落落落...起的。",
+                "今天的事情今天做，拖延症要不得。",
+                "多看看别人的优点，少盯着别人的缺点。",
+                "保持乐观，办法总比困难多。",
+                "今天有没有学到新东西？哪怕只是一个小知识。",
+                "别太在意别人的看法，你是为自己而活。",
+                "出门记得带伞，天气预报有时候也不准。",
+                "累了就休息，没有人规定你必须一直坚强。",
+                "今天的你，比昨天更优秀了吗？",
+                "珍惜当下，明天和意外不知道哪个先来。",
+                "多站在别人的角度想想，你会更理解别人。",
+                "坚持你热爱的事情，时间会给你答案。",
+                "别为打翻的牛奶哭泣，接受已经发生的事。",
+                "今天有没有夸奖过别人？真诚的赞美会让双方都开心。",
+                "保持谦逊，你知道的永远只是冰山一角。",
+                "给自己一点独处的时间，和自己对话。",
+                "别着急，慢慢来，比较快。",
+                "今天的任务完成了吗？完成了就好好放松一下。",
+                "记住别人的名字，这是最基本的尊重。",
+                "不要抱怨，抱怨解决不了任何问题。",
+                "今天有没有做让自己开心的事？",
+                "相信自己，你比想象中更强大。",
+                "代码不仅要能跑，还要让别人看得懂，注意写好注释哦。",
+                "遇到报错先别慌，仔细阅读错误信息的第一行和最后一行。",
+                "每天坚持写一点代码，手感比什么都重要。",
+                "学编程最好的方法是做项目，边做边学。"
+            ];
 
-        const dateEl = document.getElementById('currentDate');
-        const tipTextEl = document.getElementById('tipText');
-        const dayCountEl = document.getElementById('dayCount');
-        const nextTipBtn = document.getElementById('nextTipBtn');
-        const today = new Date();
-        const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
-        dateEl.textContent = today.toLocaleDateString('zh-CN', options);
+            // ===== DOM 引用 =====
+            const dateEl = document.getElementById('currentDate');
+            const tipTextEl = document.getElementById('tipText');
+            const nextBtn = document.getElementById('nextTipBtn');
+            const indexDisplay = document.getElementById('indexDisplay');
+            const copyBtn = document.getElementById('copyBtn');
+            const progressFill = document.getElementById('progressFill');
+            const progressPercent = document.getElementById('progressPercent');
 
-        // 计算一年第几天
-        function getDayOfYear(date) {
-            const start = new Date(date.getFullYear(), 0, 0);
-            const diff = date - start;
-            const oneDay = 1000 * 60 * 60 * 24;
-            return Math.floor(diff / oneDay);
-        }
+            // ===== 工具函数 =====
+            function getDayOfYear(date) {
+                const start = new Date(date.getFullYear(), 0, 0);
+                const diff = date - start;
+                return Math.floor(diff / (1000 * 60 * 60 * 24));
+            }
 
-        const dayOfYear = getDayOfYear(today);
-        const cacheKey = `daytip_${dayOfYear}`;
-        // 本地缓存当日提示，同一天打开首页文案不变
-        let currentIndex = localStorage.getItem(cacheKey) ?? dayOfYear % tips.length;
-        // 兜底防止文案数组为空报错
-        if(tips.length === 0) {
-            tipTextEl.textContent = "暂无提示文案";
-        } else {
-            tipTextEl.textContent = tips[currentIndex];
-        }
-        dayCountEl.textContent = `第 ${dayOfYear} 天 / 共 ${tips.length} 条提示`;
+            // 安全读写 localStorage
+            function setLocal(key, value) {
+                try { localStorage.setItem(key, value); } catch (_) {}
+            }
+            function getLocal(key) {
+                try { return localStorage.getItem(key); } catch (_) { return null; }
+            }
 
-        // 切换节流锁，防止连续点击
-        let isSwitching = false;
-        nextTipBtn.addEventListener('click', () => {
-            if(isSwitching || tips.length <= 1) return;
-            isSwitching = true;
+            // ===== 日期 & 进度 =====
+            const today = new Date();
+            const year = today.getFullYear();
+            const dayOfYear = getDayOfYear(today);
+            const daysInYear = (year % 400 === 0 || (year % 4 === 0 && year % 100 !== 0)) ? 366 : 365;
+            const progress = Math.min(100, (dayOfYear / daysInYear) * 100);
+            progressFill.style.width = progress + '%';
+            progressPercent.textContent = progress.toFixed(1) + '%';
 
-            let newIndex;
-            do {
-                newIndex = Math.floor(Math.random() * tips.length);
-            } while (newIndex === currentIndex);
-            
-            currentIndex = newIndex;
-            tipTextEl.style.opacity = 0;
-            setTimeout(() => {
-                tipTextEl.textContent = tips[currentIndex];
-                tipTextEl.style.opacity = 1;
-                localStorage.setItem(cacheKey, currentIndex);
-                isSwitching = false;
-            }, 200);
-        });
+            dateEl.textContent = today.toLocaleDateString('zh-CN', {
+                year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+            });
+
+            // ===== 缓存 & 初始化提示 =====
+            const cacheKey = `daytip_${year}_${dayOfYear}`;
+            let currentIndex;
+
+            // 安全读取缓存索引
+            let stored = parseInt(getLocal(cacheKey), 10);
+            if (!isNaN(stored) && stored >= 0 && stored < tips.length) {
+                currentIndex = stored;
+            } else {
+                currentIndex = dayOfYear % tips.length;
+            }
+
+            function renderTip(index) {
+                if (tips.length === 0) {
+                    tipTextEl.textContent = '暂无提示文案';
+                    indexDisplay.textContent = '0 / 0';
+                    return;
+                }
+                const idx = Math.min(index, tips.length - 1);
+                tipTextEl.textContent = tips[idx];
+                indexDisplay.textContent = `第 ${idx + 1} / ${tips.length} 条`;
+                // 更新缓存
+                setLocal(cacheKey, idx);
+            }
+
+            renderTip(currentIndex);
+
+            // ===== 切换逻辑（带防抖 & 动画） =====
+            let isSwitching = false;
+            let timeoutId = null;
+
+            function switchTip() {
+                if (isSwitching || tips.length <= 1) return;
+
+                isSwitching = true;
+                nextBtn.disabled = true;
+                nextBtn.classList.add('loading');
+
+                // 滑出动画
+                tipTextEl.classList.remove('slide-in');
+                tipTextEl.classList.add('slide-out');
+
+                // 延迟更换内容并滑入
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    let newIndex;
+                    do {
+                        newIndex = Math.floor(Math.random() * tips.length);
+                    } while (newIndex === currentIndex && tips.length > 1);
+                    currentIndex = newIndex;
+
+                    tipTextEl.textContent = tips[currentIndex];
+                    tipTextEl.classList.remove('slide-out');
+                    tipTextEl.classList.add('slide-in');
+
+                    // 更新序号
+                    indexDisplay.textContent = `第 ${currentIndex + 1} / ${tips.length} 条`;
+                    setLocal(cacheKey, currentIndex);
+
+                    // 恢复按钮
+                    nextBtn.disabled = false;
+                    nextBtn.classList.remove('loading');
+                    isSwitching = false;
+                }, 280); // 与 CSS 过渡时间匹配
+            }
+
+            nextBtn.addEventListener('click', switchTip);
+
+            // ===== 键盘快捷键：空格 / 右箭头 =====
+            document.addEventListener('keydown', (e) => {
+                if (e.key === ' ' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    switchTip();
+                }
+            });
+
+            // ===== 复制功能 =====
+            copyBtn.addEventListener('click', async () => {
+                const text = tipTextEl.textContent;
+                if (!text || text === '正在加载...' || text === '暂无提示文案') return;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    copyBtn.textContent = '✅ 已复制';
+                    copyBtn.classList.add('copied');
+                    setTimeout(() => {
+                        copyBtn.textContent = '📋 复制';
+                        copyBtn.classList.remove('copied');
+                    }, 1800);
+                } catch (_) {
+                    // 降级方案
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    ta.remove();
+                    copyBtn.textContent = '✅ 已复制';
+                    setTimeout(() => {
+                        copyBtn.textContent = '📋 复制';
+                    }, 1800);
+                }
+            });
+
+            // ===== 初始化动画状态 =====
+            // 第一次加载完成，让文字以滑入方式出现
+            tipTextEl.classList.add('slide-in');
+        })();
     </script>
 </body>
-<!-- 测试Git自动部署，2026-06-25 测试注释 -->
 </html>
