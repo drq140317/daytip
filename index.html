@@ -43,6 +43,13 @@
             button:hover {
                 background: #3a3a6a;
             }
+            .modal-box {
+                background: #1e1e38;
+                color: #eee;
+            }
+            .collect-item {
+                border-color: #333;
+            }
         }
 
         /* ===== 卡片样式 ===== */
@@ -59,7 +66,6 @@
             border: 1px solid rgba(255, 255, 255, 0.18);
             opacity: 0;
             animation: cardShow 0.6s ease forwards;
-            /* 呼吸动效改为上下浮动，更柔和 */
             animation: cardShow 0.6s ease forwards, floatBreath 6s ease-in-out infinite alternate;
         }
 
@@ -97,7 +103,6 @@
             background: linear-gradient(90deg, #fff, #e0e0ff);
             -webkit-background-clip: text;
             color: transparent;
-            /* 后备颜色 */
             @supports not (background-clip: text) {
                 color: #fff;
                 background: none;
@@ -139,7 +144,7 @@
             transition: width 0.6s ease;
         }
 
-        /* ===== 按钮 ===== */
+        /* ===== 主按钮 ===== */
         button {
             background: #fff;
             color: #764ba2;
@@ -183,19 +188,25 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* ===== 底部信息 ===== */
+        /* ===== 底部区域 ===== */
         .footer-info {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             margin-top: 18px;
             font-size: 0.8em;
             opacity: 0.7;
             flex-wrap: wrap;
             gap: 6px;
         }
+        .footer-middle, .footer-btn-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
 
-        /* ===== 复制按钮 ===== */
-        .copy-btn {
+        /* ===== 复制&收藏&收藏夹小按钮 ===== */
+        .copy-btn, .collect-btn, .open-collect-btn {
             background: none;
             border: none;
             color: rgba(255,255,255,0.6);
@@ -206,12 +217,73 @@
             transition: background 0.2s;
             box-shadow: none;
         }
-        .copy-btn:hover {
+        .copy-btn:hover, .collect-btn:hover, .open-collect-btn:hover {
             background: rgba(255,255,255,0.15);
             transform: none;
         }
         .copy-btn.copied {
             color: #b6ffb6;
+        }
+        .collect-btn.collected {
+            color: #ffdd70;
+        }
+
+        /* ===== 收藏弹窗 ===== */
+        .modal-mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            padding: 20px;
+        }
+        .modal-mask.show { display: flex; }
+        .modal-box {
+            background: #fff;
+            color: #222;
+            border-radius: 14px;
+            width: 100%;
+            max-width: 460px;
+            max-height: 70vh;
+            overflow: auto;
+            padding: 24px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .close-modal {
+            border: none;
+            background: #eee;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .collect-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+            position: relative;
+        }
+        .del-collect {
+            position: absolute;
+            right: 6px;
+            top: 6px;
+            font-size: 0.8em;
+            color: #f55;
+            background: none;
+            border: none;
+        }
+        .empty-tip {
+            text-align: center;
+            padding: 30px 0;
+            opacity: 0.6;
         }
 
         /* ===== 响应式 ===== */
@@ -219,6 +291,10 @@
             .card { padding: 24px 18px; }
             h1 { font-size: 1.5em; }
             .tip-content { font-size: 1em; min-height: 70px; }
+            .footer-info {
+                flex-direction: column;
+                align-items: flex-start;
+            }
         }
     </style>
 </head>
@@ -245,9 +321,27 @@
             <span class="spinner"></span>
         </button>
 
+        <!-- 底部布局：左序号 | 中间收藏夹按钮 | 右收藏+复制 -->
         <div class="footer-info">
             <span id="indexDisplay">第 1 / 54 条</span>
-            <button class="copy-btn" id="copyBtn" aria-label="复制当前提示">📋 复制</button>
+            <div class="footer-middle">
+                <button class="open-collect-btn" id="openCollectBtn">📂 收藏夹</button>
+            </div>
+            <div class="footer-btn-group">
+                <button class="collect-btn" id="collectBtn">⭐ 收藏</button>
+                <button class="copy-btn" id="copyBtn" aria-label="复制当前提示">📋 复制</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 收藏弹窗 -->
+    <div class="modal-mask" id="collectModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>我的收藏文案</h3>
+                <button class="close-modal" id="closeCollectModal">×</button>
+            </div>
+            <div id="collectList"></div>
         </div>
     </div>
 
@@ -320,6 +414,14 @@
             const progressFill = document.getElementById('progressFill');
             const progressPercent = document.getElementById('progressPercent');
 
+            // 收藏相关DOM
+            const collectBtn = document.getElementById('collectBtn');
+            const openCollectBtn = document.getElementById('openCollectBtn');
+            const collectModal = document.getElementById('collectModal');
+            const closeCollectModal = document.getElementById('closeCollectModal');
+            const collectList = document.getElementById('collectList');
+            const collectStorageKey = 'daytip_collects';
+
             // ===== 工具函数 =====
             function getDayOfYear(date) {
                 const start = new Date(date.getFullYear(), 0, 0);
@@ -327,13 +429,88 @@
                 return Math.floor(diff / (1000 * 60 * 60 * 24));
             }
 
-            // 安全读写 localStorage
             function setLocal(key, value) {
                 try { localStorage.setItem(key, value); } catch (_) {}
             }
             function getLocal(key) {
                 try { return localStorage.getItem(key); } catch (_) { return null; }
             }
+
+            // ===== 收藏逻辑 =====
+            let collects = [];
+            function loadCollects() {
+                const raw = getLocal(collectStorageKey);
+                if (raw) collects = JSON.parse(raw);
+            }
+            function saveCollects() {
+                setLocal(collectStorageKey, JSON.stringify(collects));
+            }
+            function isCollected(text) {
+                return collects.includes(text);
+            }
+            function refreshCollectBtn() {
+                const text = tipTextEl.textContent;
+                if (isCollected(text)) {
+                    collectBtn.classList.add('collected');
+                    collectBtn.textContent = '⭐ 已收藏';
+                } else {
+                    collectBtn.classList.remove('collected');
+                    collectBtn.textContent = '⭐ 收藏';
+                }
+            }
+
+            // 【修改1】点击收藏仅切换状态，不弹弹窗
+            collectBtn.addEventListener('click', () => {
+                const text = tipTextEl.textContent;
+                if (isCollected(text)) {
+                    collects = collects.filter(item => item !== text);
+                } else {
+                    collects.push(text);
+                }
+                saveCollects();
+                refreshCollectBtn();
+            });
+
+            // 【修改2】单独收藏夹按钮打开弹窗
+            openCollectBtn.addEventListener('click', () => {
+                collectModal.classList.add('show');
+                renderCollectList();
+            });
+
+            // 关闭弹窗
+            closeCollectModal.addEventListener('click', () => {
+                collectModal.classList.remove('show');
+            });
+            collectModal.addEventListener('click', e => {
+                if (e.target === collectModal) collectModal.classList.remove('show');
+            });
+
+            // 渲染收藏列表
+            function renderCollectList() {
+                if (collects.length === 0) {
+                    collectList.innerHTML = '<div class="empty-tip">暂无收藏文案</div>';
+                    return;
+                }
+                let html = '';
+                collects.forEach((item, idx) => {
+                    html += `
+                    <div class="collect-item">
+                        ${item}
+                        <button class="del-collect" data-idx="${idx}">删除</button>
+                    </div>`;
+                });
+                collectList.innerHTML = html;
+                collectList.querySelectorAll('.del-collect').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const i = Number(btn.dataset.idx);
+                        collects.splice(i, 1);
+                        saveCollects();
+                        renderCollectList();
+                        refreshCollectBtn();
+                    });
+                });
+            }
+            loadCollects();
 
             // ===== 日期 & 进度 =====
             const today = new Date();
@@ -351,8 +528,6 @@
             // ===== 缓存 & 初始化提示 =====
             const cacheKey = `daytip_${year}_${dayOfYear}`;
             let currentIndex;
-
-            // 安全读取缓存索引
             let stored = parseInt(getLocal(cacheKey), 10);
             if (!isNaN(stored) && stored >= 0 && stored < tips.length) {
                 currentIndex = stored;
@@ -369,28 +544,22 @@
                 const idx = Math.min(index, tips.length - 1);
                 tipTextEl.textContent = tips[idx];
                 indexDisplay.textContent = `第 ${idx + 1} / ${tips.length} 条`;
-                // 更新缓存
                 setLocal(cacheKey, idx);
+                refreshCollectBtn();
             }
 
             renderTip(currentIndex);
 
-            // ===== 切换逻辑（带防抖 & 动画） =====
+            // ===== 切换文案逻辑 =====
             let isSwitching = false;
             let timeoutId = null;
-
             function switchTip() {
                 if (isSwitching || tips.length <= 1) return;
-
                 isSwitching = true;
                 nextBtn.disabled = true;
                 nextBtn.classList.add('loading');
-
-                // 滑出动画
                 tipTextEl.classList.remove('slide-in');
                 tipTextEl.classList.add('slide-out');
-
-                // 延迟更换内容并滑入
                 clearTimeout(timeoutId);
                 timeoutId = setTimeout(() => {
                     let newIndex;
@@ -398,22 +567,17 @@
                         newIndex = Math.floor(Math.random() * tips.length);
                     } while (newIndex === currentIndex && tips.length > 1);
                     currentIndex = newIndex;
-
                     tipTextEl.textContent = tips[currentIndex];
                     tipTextEl.classList.remove('slide-out');
                     tipTextEl.classList.add('slide-in');
-
-                    // 更新序号
                     indexDisplay.textContent = `第 ${currentIndex + 1} / ${tips.length} 条`;
                     setLocal(cacheKey, currentIndex);
-
-                    // 恢复按钮
+                    refreshCollectBtn();
                     nextBtn.disabled = false;
                     nextBtn.classList.remove('loading');
                     isSwitching = false;
-                }, 280); // 与 CSS 过渡时间匹配
+                }, 280);
             }
-
             nextBtn.addEventListener('click', switchTip);
 
             // ===== 键盘快捷键：空格 / 右箭头 =====
@@ -437,7 +601,6 @@
                         copyBtn.classList.remove('copied');
                     }, 1800);
                 } catch (_) {
-                    // 降级方案
                     const ta = document.createElement('textarea');
                     ta.value = text;
                     document.body.appendChild(ta);
@@ -451,8 +614,7 @@
                 }
             });
 
-            // ===== 初始化动画状态 =====
-            // 第一次加载完成，让文字以滑入方式出现
+            // 初始化文字动画
             tipTextEl.classList.add('slide-in');
         })();
     </script>
