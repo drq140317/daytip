@@ -52,44 +52,6 @@
             }
         }
 
-        /* ===== 左上角 · 纯粹的双摆（无任何背景） ===== */
-        .pendulum-widget {
-            position: fixed;
-            top: 18px;
-            left: 18px;
-            width: clamp(110px, 20vw, 210px);
-            aspect-ratio: 1 / 1;
-            border-radius: 16px;
-            overflow: hidden;
-            z-index: 10;
-            /* 彻底移除背景、边框、阴影、模糊 */
-            background: transparent;
-            border: none;
-            box-shadow: none;
-            backdrop-filter: none;
-            -webkit-backdrop-filter: none;
-        }
-        .pendulum-widget canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            touch-action: none;
-            cursor: crosshair;
-        }
-        .pw-title {
-            position: absolute;
-            left: 10px;
-            top: 8px;
-            font-size: 9px;
-            letter-spacing: 0.2em;
-            color: #ffffff;
-            opacity: 0.8;
-            pointer-events: none;
-            user-select: none;
-            white-space: nowrap;
-            text-shadow: 0 0 4px rgba(0,0,0,0.3);
-        }
-
         /* ===== 卡片样式 ===== */
         .card {
             background: rgba(255, 255, 255, 0.15);
@@ -103,6 +65,7 @@
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.18);
             opacity: 0;
+            animation: cardShow 0.6s ease forwards;
             animation: cardShow 0.6s ease forwards, floatBreath 6s ease-in-out infinite alternate;
         }
 
@@ -306,8 +269,10 @@
             padding: 10px;
             border-bottom: 1px solid #eee;
             text-align: left;
+            /* 移除position:relative，取消定位容器 */
         }
         .del-collect {
+            /* 移除绝对定位 */
             display: block;
             margin-top: 8px;
             font-size: 0.8em;
@@ -333,28 +298,10 @@
                 flex-direction: column;
                 align-items: flex-start;
             }
-            .pendulum-widget {
-                top: 12px;
-                left: 12px;
-                width: 100px;
-                border-radius: 12px;
-            }
-            .pw-title {
-                font-size: 8px;
-                left: 8px;
-                top: 6px;
-                letter-spacing: 0.12em;
-            }
         }
     </style>
 </head>
 <body>
-    <!-- 左上角 · 混沌双摆（完全透明背景） -->
-    <div class="pendulum-widget" id="pendulumWidget" title="点击 / 轻触 → 随机重置初始条件">
-        <canvas id="pendulumCanvas"></canvas>
-        <span class="pw-title">点击重置</span>
-    </div>
-
     <div class="card" role="main">
         <h1>💡 每日小提示</h1>
         <div class="date" id="currentDate"></div>
@@ -377,7 +324,7 @@
             <span class="spinner"></span>
         </button>
 
-        <!-- 底部布局 -->
+        <!-- 底部布局：左序号 | 中间收藏夹按钮 | 右收藏+复制 -->
         <div class="footer-info">
             <span id="indexDisplay">第 1 / 54 条</span>
             <div class="footer-middle">
@@ -400,6 +347,7 @@
             <div id="collectList"></div>
         </div>
     </div>
+
     <script>
         (function() {
             // ===== 提示库 =====
@@ -514,6 +462,7 @@
                 }
             }
 
+            // 【修改1】点击收藏仅切换状态，不弹弹窗
             collectBtn.addEventListener('click', () => {
                 const text = tipTextEl.textContent;
                 if (isCollected(text)) {
@@ -525,11 +474,13 @@
                 refreshCollectBtn();
             });
 
+            // 【修改2】单独收藏夹按钮打开弹窗
             openCollectBtn.addEventListener('click', () => {
                 collectModal.classList.add('show');
                 renderCollectList();
             });
 
+            // 关闭弹窗
             closeCollectModal.addEventListener('click', () => {
                 collectModal.classList.remove('show');
             });
@@ -537,6 +488,7 @@
                 if (e.target === collectModal) collectModal.classList.remove('show');
             });
 
+            // 渲染收藏列表
             function renderCollectList() {
                 if (collects.length === 0) {
                     collectList.innerHTML = '<div class="empty-tip">暂无收藏文案</div>';
@@ -631,6 +583,7 @@
             }
             nextBtn.addEventListener('click', switchTip);
 
+            // ===== 键盘快捷键：空格 / 右箭头 =====
             document.addEventListener('keydown', (e) => {
                 if (e.key === ' ' || e.key === 'ArrowRight') {
                     e.preventDefault();
@@ -664,259 +617,8 @@
                 }
             });
 
+            // 初始化文字动画
             tipTextEl.classList.add('slide-in');
-        })();
-
-        /* =========================================================
-           左上角 · 混沌双摆（无背景，纯透明）
-           ========================================================= */
-        (function() {
-            'use strict';
-
-            const canvas = document.getElementById('pendulumCanvas');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            const wrap = canvas.parentElement;
-
-            /* ---------------- 物理参数 ---------------- */
-            const G  = 9.81;
-            const L1 = 1.0;
-            const L2 = 1.0;
-            const M1 = 1.0;
-            const M2 = 1.0;
-
-            /* ---------------- 视觉参数 ---------------- */
-            const TRAIL_LIFE = 1900;
-            const MAX_POINTS = 360;
-            const MIN_DIST2  = 4;
-
-            /* ---------------- 运行时状态 ---------------- */
-            let W = 0, H = 0, cx = 0, cy = 0, scale = 1;
-            let st = [0, 0, 0, 0];
-            const trail = [];
-
-            /* ---------------- 重力方程 ---------------- */
-            function derivatives(s) {
-                const t1 = s[0], w1 = s[1], t2 = s[2], w2 = s[3];
-                const d  = t1 - t2;
-                const sd = Math.sin(d), cd = Math.cos(d);
-                const denom = 2 * M1 + M2 - M2 * Math.cos(2 * d);
-
-                const a1 = (
-                    -G * (2 * M1 + M2) * Math.sin(t1)
-                    - M2 * G * Math.sin(t1 - 2 * t2)
-                    - 2 * sd * M2 * (w2 * w2 * L2 + w1 * w1 * L1 * cd)
-                ) / (L1 * denom);
-
-                const a2 = (
-                    2 * sd * (
-                        w1 * w1 * L1 * (M1 + M2)
-                        + G * (M1 + M2) * Math.cos(t1)
-                        + w2 * w2 * L2 * M2 * cd
-                    )
-                ) / (L2 * denom);
-
-                return [w1, a1, w2, a2];
-            }
-
-            /* ---------------- 四阶龙格-库塔积分 ---------------- */
-            function rk4(s, h) {
-                const k1 = derivatives(s);
-
-                const s2 = [s[0] + h * 0.5 * k1[0], s[1] + h * 0.5 * k1[1],
-                            s[2] + h * 0.5 * k1[2], s[3] + h * 0.5 * k1[3]];
-                const k2 = derivatives(s2);
-
-                const s3 = [s[0] + h * 0.5 * k2[0], s[1] + h * 0.5 * k2[1],
-                            s[2] + h * 0.5 * k2[2], s[3] + h * 0.5 * k2[3]];
-                const k3 = derivatives(s3);
-
-                const s4 = [s[0] + h * k3[0], s[1] + h * k3[1],
-                            s[2] + h * k3[2], s[3] + h * k3[3]];
-                const k4 = derivatives(s4);
-
-                const out = new Array(4);
-                for (let i = 0; i < 4; i++) {
-                    out[i] = s[i] + (h / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]);
-                }
-                return out;
-            }
-
-            /* ---------------- 坐标转换 ---------------- */
-            function joints() {
-                const t1 = st[0], t2 = st[2];
-                const x1 = cx + L1 * Math.sin(t1) * scale;
-                const y1 = cy + L1 * Math.cos(t1) * scale;
-                const x2 = x1 + L2 * Math.sin(t2) * scale;
-                const y2 = y1 + L2 * Math.cos(t2) * scale;
-                return [x1, y1, x2, y2];
-            }
-
-            /* ---------------- 拖尾采样 ---------------- */
-            function recordTrail(now) {
-                const [, , x, y] = joints();
-                const last = trail[trail.length - 1];
-                if (last) {
-                    const dx = x - last.x, dy = y - last.y;
-                    if (dx * dx + dy * dy < MIN_DIST2) return;
-                }
-                trail.push({ x, y, t: now });
-                if (trail.length > MAX_POINTS) trail.shift();
-            }
-
-            /* ---------------- 渲染 ---------------- */
-            function render(now) {
-                // 透明清屏，不要任何背景色
-                ctx.clearRect(0, 0, W, H);
-
-                // 过期点清理
-                while (trail.length && now - trail[0].t > TRAIL_LIFE) trail.shift();
-
-                const [x1, y1, x2, y2] = joints();
-
-                /* 1. 末端摆锤的渐隐拖尾 */
-                ctx.globalCompositeOperation = 'lighter';
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-
-                for (let i = 1; i < trail.length; i++) {
-                    const a = trail[i - 1];
-                    const b = trail[i];
-                    const age = (now - b.t) / TRAIL_LIFE;
-                    if (age >= 1 || age < 0) continue;
-
-                    const k = 1 - age;
-                    const alpha = Math.pow(k, 1.7) * 0.9;
-                    const hue = 188 + 96 * age;
-                    const light = 42 + 34 * k;
-
-                    ctx.strokeStyle = `hsla(${hue}, 100%, ${light}%, ${alpha})`;
-                    ctx.lineWidth = 0.4 + 2.6 * k;
-
-                    ctx.beginPath();
-                    ctx.moveTo(a.x, a.y);
-                    ctx.lineTo(b.x, b.y);
-                    ctx.stroke();
-                }
-                ctx.globalCompositeOperation = 'source-over';
-
-                /* 2. 摆杆 */
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-
-                ctx.strokeStyle = 'rgba(120,165,255,0.16)';
-                ctx.lineWidth = 6;
-                ctx.beginPath();
-                ctx.moveTo(cx, cy);
-                ctx.lineTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.stroke();
-
-                ctx.strokeStyle = 'rgba(190,212,255,0.82)';
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
-                ctx.moveTo(cx, cy);
-                ctx.lineTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.stroke();
-
-                /* 3. 摆锤 */
-                ctx.save();
-
-                ctx.shadowColor = 'rgba(110,180,255,0.95)';
-                ctx.shadowBlur = 16;
-                ctx.fillStyle = '#d5e6ff';
-                ctx.beginPath();
-                ctx.arc(x1, y1, 5.5, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.shadowColor = 'rgba(255,120,225,0.95)';
-                ctx.shadowBlur = 20;
-                ctx.fillStyle = '#fff0fb';
-                ctx.beginPath();
-                ctx.arc(x2, y2, 7.5, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.restore();
-
-                /* 4. 固定支点 */
-                ctx.fillStyle = 'rgba(150,175,225,0.55)';
-                ctx.beginPath();
-                ctx.arc(cx, cy, 3, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            /* ---------------- 主循环 ---------------- */
-            const SUBSTEP = 1 / 900;
-            let lastT = performance.now();
-            let acc = 0;
-
-            function frame(now) {
-                requestAnimationFrame(frame);
-
-                let dt = (now - lastT) / 1000;
-                lastT = now;
-                if (!isFinite(dt) || dt < 0) dt = 0;
-                if (dt > 0.05) dt = 0.05;
-
-                acc += dt;
-
-                let guard = 0;
-                while (acc >= SUBSTEP && guard++ < 240) {
-                    st = rk4(st, SUBSTEP);
-                    acc -= SUBSTEP;
-                    recordTrail(now);
-                }
-
-                render(now);
-            }
-
-            /* ---------------- 重置 ---------------- */
-            function reset() {
-                const base = Math.PI / 2;
-                st = [
-                    base + (Math.random() - 0.5) * 1.2,
-                    0,
-                    base + (Math.random() - 0.5) * 2.0,
-                    0
-                ];
-                trail.length = 0;
-            }
-
-            /* ---------------- 尺寸自适应 ---------------- */
-            function resize() {
-                const dpr = Math.min(window.devicePixelRatio || 1, 2);
-                W = wrap.clientWidth  || 160;
-                H = wrap.clientHeight || 160;
-
-                canvas.width  = Math.round(W * dpr);
-                canvas.height = Math.round(H * dpr);
-                canvas.style.width  = W + 'px';
-                canvas.style.height = H + 'px';
-                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-                cx = W / 2;
-                cy = H * 0.30;
-                scale = Math.min(W, H) * 0.26;
-
-                trail.length = 0;
-            }
-
-            /* ---------------- 事件绑定 ---------------- */
-            if (window.ResizeObserver) {
-                new ResizeObserver(resize).observe(wrap);
-            }
-            window.addEventListener('resize', resize, { passive: true });
-
-            canvas.addEventListener('pointerdown', (e) => {
-                e.preventDefault();
-                reset();
-            });
-
-            /* ---------------- 启动 ---------------- */
-            resize();
-            reset();
-            requestAnimationFrame(frame);
         })();
     </script>
 </body>
